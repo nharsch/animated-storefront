@@ -30,8 +30,10 @@
 
 (rf/reg-event-db
  :change-filters
- (fn [db [_ filters]]
-   (update db :filters merge filters)))
+ (fn [db [_ new-filters]]
+   (update db :filters #(->> (merge % new-filters)
+                             (remove (fn [[_ v]] (nil? v)))
+                             (into {})))))
 
 (rf/reg-event-db
  :clear-filters

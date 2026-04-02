@@ -5,7 +5,7 @@
 (defn filter-bar []
   (let [categories @(rf/subscribe [:categories])
         filters    @(rf/subscribe [:filters])
-        sort       @(rf/subscribe [:sort])]
+        sort-state @(rf/subscribe [:sort])]
     [:div {:class "flex flex-wrap gap-3 mb-6 items-center"}
      ;; Category filter
      [:select {:class     "text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white"
@@ -13,11 +13,11 @@
                :on-change #(rf/dispatch [:change-filters {:category (let [v (.. % -target -value)]
                                                                       (when (seq v) v))}])}
       [:option {:value ""} "All categories"]
-      (for [cat (sort categories)]
-        ^{:key cat} [:option {:value cat} cat])]
+      (doall (for [cat (sort categories)]
+               ^{:key cat} [:option {:value cat} cat]))]
      ;; Sort
      [:select {:class     "text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white"
-               :value     (str (name (:field sort)) "-" (name (:dir sort)))
+               :value     (str (name (:field sort-state)) "-" (name (:dir sort-state)))
                :on-change #(let [[field dir] (clojure.string/split (.. % -target -value) #"-")]
                              (rf/dispatch [:change-sort (keyword field) (keyword dir)]))}
       [:option {:value "price-asc"} "Price: Low to High"]
