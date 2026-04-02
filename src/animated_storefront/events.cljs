@@ -9,6 +9,7 @@
    :filters     {}
    :sort        {:field :price :dir :asc}
    :selected-ids []          ;; for compare / pdp
+   :result-ids  nil          ;; when set, grid/list show only these products
    :chat        {:messages [] :loading false}
    :db-version  0})
 
@@ -24,7 +25,9 @@
  :change-view
  (fn [db [_ view product-ids]]
    (cond-> (assoc db :view view)
-     product-ids (assoc :selected-ids product-ids))))
+     product-ids       (assoc :result-ids product-ids)
+     (not product-ids) (assoc :result-ids nil)
+     (#{:compare :pdp} view) (assoc :selected-ids product-ids))))
 
 ;; -- Filters ------------------------------------------------------------------
 
@@ -38,7 +41,7 @@
 (rf/reg-event-db
  :clear-filters
  (fn [db _]
-   (assoc db :filters {})))
+   (assoc db :filters {} :result-ids nil)))
 
 ;; -- Sort ---------------------------------------------------------------------
 

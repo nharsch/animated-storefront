@@ -10,22 +10,23 @@
 (rf/reg-sub :chat (fn [db _] (:chat db)))
 (rf/reg-sub :products-loading (fn [db _] (:products-loading db)))
 (rf/reg-sub :db-version (fn [db _] (:db-version db)))
+(rf/reg-sub :result-ids (fn [db _] (:result-ids db)))
 
 (rf/reg-sub
  :products
  :<- [:filters]
  :<- [:sort]
  :<- [:db-version]
- (fn [[filters {:keys [field dir]} _] _]
-   (let [all   (product-db/all-products)
-         ;; apply category filter if set
-         filtered (if-let [cat (:category filters)]
-                    (filter #(= (:product/category %) cat) all)
-                    all)
-         ;; apply price range if set
-         filtered (if-let [max-price (:max-price filters)]
-                    (filter #(<= (:product/price %) max-price) filtered)
-                    filtered)
+ :<- [:result-ids]
+ (fn [[filters {:keys [field dir]} _ result-ids] _]
+   (let [base     (if (seq result-ids)
+                    ;; pinned result set — preserve order, still apply filters
+                    (let [by-id (into {} (map (juxt :product/id identity) (product-db/all-products)))]
+                      (keep by-id result-ids))
+                    (product-db/all-products))
+         filtered (cond->> base
+                    (:category filters)  (filter #(= (:product/category %) (:category filters)))
+                    (:max-price filters) (filter #(<= (:product/price %) (:max-price filters))))
          sort-fn  (fn [p] (get p (keyword "product" (name field))))
          sorted   (sort-by sort-fn filtered)]
      (if (= dir :desc) (reverse sorted) sorted))))

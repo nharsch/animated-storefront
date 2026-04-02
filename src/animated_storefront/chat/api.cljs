@@ -1,15 +1,18 @@
 (ns animated-storefront.chat.api
   (:require [re-frame.core :as rf]
+            [re-frame.db :as rf-db]
             [animated-storefront.chat.tools :as tools]
             [animated-storefront.config :as config]
             [animated-storefront.db :as product-db]
             [clojure.string :as str]))
 
 (defn current-ui-state []
-  {:view     (name @(rf/subscribe [:view]))
-   :filters  @(rf/subscribe [:filters])
-   :sort     @(rf/subscribe [:sort])
-   :categories (vec (product-db/categories))})
+  (let [db @rf-db/app-db]
+    {:view       (name (:view db))
+     :filters    (:filters db)
+     :sort       (:sort db)
+     :result-ids (:result-ids db)
+     :categories (vec (product-db/categories))}))
 
 ;; TODO: maybe put this in a seperate markdown file? would need templating...
 (defn system-prompt []
@@ -18,7 +21,12 @@
          "You can control the UI by using the provided tools, and answer customer questions "
          "by querying the product catalog.\n\n"
          "## Current UI state\n"
-         (str state) "\n\n"
+         "view: " (:view state) "\n"
+         "filters: " (str (:filters state)) "\n"
+         "sort: " (str (:sort state)) "\n"
+         (when (seq (:result-ids state))
+           (str "pinned-result-ids: " (str (:result-ids state)) "\n"))
+         "\n"
          "## Product catalog\n"
          "Products have these attributes: title, price, category, rating, tags (many), thumbnail, stock.\n"
          "Available categories: " (str/join ", " (:categories state)) "\n\n"
@@ -39,6 +47,9 @@
          "## Behavior\n"
          "- Use tools to change the UI when the customer wants to browse or navigate.\n"
          "- Use datalog_query for complex or cross-category searches; query_products for simple lookups.\n"
+         "- When a customer asks about a specific product or type (e.g. 'is the nail polish good?'), "
+         "always query the catalog first and answer based on what you find. Never ask for clarification "
+         "when you can just look it up.\n"
          "- Always explain what you're doing in a friendly, concise tone.")))
 
 (defn fetch-claude [messages]
@@ -93,8 +104,8 @@
                   (rf/dispatch [:chat/set-loading false]))))))
 
 (defn send-message! [user-text]
-  (rf/dispatch [:chat/append-message {:role "user" :content user-text}])
+  (rf/dispatch-sync [:chat/append-message {:role "user" :content user-text}])
   (rf/dispatch [:chat/set-loading true])
   (let [messages (mapv #(select-keys % [:role :content])
-                       (:messages @(rf/subscribe [:chat])))]
+                       (:messages (:chat @rf-db/app-db)))]
     (run-agentic-loop! messages 0)))

@@ -8,14 +8,14 @@
 
 (def tool-definitions
   [{:name        "change_view"
-    :description "Switch the storefront to a different view. Use product_ids when switching to compare or pdp."
+    :description "Switch the storefront to a different view. Pass product_ids to pin a specific result set in grid or list views (e.g. after a datalog_query). Required for compare/pdp. Omit product_ids to return to the normal filtered view."
     :input_schema {:type       "object"
                    :properties {:view        {:type "string"
                                               :enum ["grid" "list" "compare" "pdp"]
                                               :description "The view to switch to"}
                                 :product_ids {:type  "array"
                                               :items {:type "integer"}
-                                              :description "Product IDs to show (required for compare/pdp)"}}
+                                              :description "Product IDs to display. Pins these products in grid/list; required for compare/pdp."}}
                    :required   ["view"]}}
 
    {:name        "change_filters"
