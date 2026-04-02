@@ -1,7 +1,8 @@
 (ns animated-storefront.views.app
   (:require [re-frame.core :as rf]
             [animated-storefront.views.grid :as grid]
-            [animated-storefront.views.chat :as chat]))
+            [animated-storefront.views.chat :as chat]
+            [animated-storefront.views.pdp-modal :as pdp]))
 
 (defn tab-bar []
   (let [view @(rf/subscribe [:view])]
@@ -19,10 +20,7 @@
   (let [view @(rf/subscribe [:view])]
     (case view
       :grid [grid/grid-view]
-      :list [grid/list-view]
-      ;; compare and pdp stubs — to be built
-      [:div {:class "flex-1 flex items-center justify-center text-gray-400"}
-       (str "View " " (name view) " " coming soon")])))
+      [grid/grid-view])))
 
 (defn app []
   [:div {:class "flex flex-col h-screen"}
@@ -35,4 +33,5 @@
    ;; Body: content + chat
    [:div {:class "flex flex-1 overflow-hidden"}
     [main-content]
-    [chat/chat-panel]]])
+    [chat/chat-panel]]
+   [pdp/pdp-modal]])

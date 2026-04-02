@@ -5,14 +5,15 @@
 ;; -- Initial state ------------------------------------------------------------
 
 (def default-db
-  {:view        :grid        ;; :grid | :list | :compare | :pdp
-   :filters     {}
-   :sort        {:field :price :dir :asc}
-   :selected-ids []          ;; for compare / pdp
-   :result-ids  nil          ;; when set, grid/list show only these products
-   :active-query nil         ;; the datalog query that produced current result-ids
-   :chat        {:messages [] :loading false}
-   :db-version  0})
+  {:view           :grid      ;; :grid | :list
+   :filters        {}
+   :sort           {:field :price :dir :asc}
+   :selected-ids   []
+   :result-ids     nil        ;; when set, grid/list show only these products
+   :active-query   nil        ;; the datalog query that produced current result-ids
+   :pdp-product-id nil        ;; when set, PDP modal is open
+   :chat           {:messages [] :loading false}
+   :db-version     0})
 
 ;; -- App lifecycle ------------------------------------------------------------
 
@@ -34,6 +35,18 @@
  :set-active-query
  (fn [db [_ query]]
    (assoc db :active-query query)))
+
+;; -- PDP modal ----------------------------------------------------------------
+
+(rf/reg-event-db
+ :open-pdp
+ (fn [db [_ product-id]]
+   (assoc db :pdp-product-id product-id)))
+
+(rf/reg-event-db
+ :close-pdp
+ (fn [db _]
+   (assoc db :pdp-product-id nil)))
 
 ;; -- Filters ------------------------------------------------------------------
 

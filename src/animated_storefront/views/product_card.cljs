@@ -1,7 +1,9 @@
-(ns animated-storefront.views.product-card)
+(ns animated-storefront.views.product-card
+  (:require [re-frame.core :as rf]))
 
 (defn product-card [{:product/keys [id title price category thumbnail rating]}]
-  [:div {:class "bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow"}
+  [:div {:class    "bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
+         :on-click #(rf/dispatch [:open-pdp id])}
    [:img {:src thumbnail :alt title
           :class "w-full h-48 object-cover"}]
    [:div {:class "p-4"}
@@ -12,7 +14,8 @@
      [:span {:class "text-xs text-yellow-500"} (str "★ " rating)]]]])
 
 (defn product-card-compact [{:product/keys [id title price category thumbnail rating]}]
-  [:div {:class "bg-white rounded-lg border border-gray-100 flex gap-3 p-3 hover:shadow-sm transition-shadow"}
+  [:div {:class    "bg-white rounded-lg border border-gray-100 flex gap-3 p-3 hover:shadow-sm transition-shadow cursor-pointer"
+         :on-click #(rf/dispatch [:open-pdp id])}
    [:img {:src thumbnail :alt title
           :class "w-16 h-16 object-cover rounded-md flex-shrink-0"}]
    [:div {:class "flex-1 min-w-0"}

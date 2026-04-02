@@ -12,7 +12,7 @@
     :description "Switch the storefront to a different view. Pass product_ids to pin a specific result set in grid or list views (e.g. after a datalog_query). Required for compare/pdp. Omit product_ids to return to the normal filtered view."
     :input_schema {:type       "object"
                    :properties {:view        {:type "string"
-                                              :enum ["grid" "list" "compare" "pdp"]
+                                              :enum ["grid" "list"]
                                               :description "The view to switch to"}
                                 :product_ids {:type  "array"
                                               :items {:type "integer"}
@@ -44,6 +44,12 @@
                                 :max_price {:type "number" :description "Maximum price"}
                                 :query     {:type "string" :description "Text to match against title/description"}}}}
 
+   {:name        "open_pdp"
+    :description "Open the product detail modal for a specific product. Use when the customer wants to see full details on a single product."
+    :input_schema {:type       "object"
+                   :properties {:product_id {:type "integer" :description "The product ID to show"}}
+                   :required   ["product_id"]}}
+
    {:name        "get_current_products"
     :description "Returns the products currently visible on screen, respecting any active filters and pinned result set. Use this when the customer asks about 'these', 'what I'm looking at', 'which of these', etc."
     :input_schema {:type "object" :properties {}}}
@@ -65,24 +71,27 @@
 (defn dispatch-tool-call! [{:keys [name input]}]
   (case name
     "change_view"
-    (rf/dispatch [:change-view
-                  (keyword (:view input))
-                  (:product_ids input)])
+    (rf/dispatch-sync [:change-view
+                       (keyword (:view input))
+                       (:product_ids input)])
 
     "change_filters"
-    (rf/dispatch [:change-filters
-                  (cond-> {}
-                    (:category input)   (assoc :category (:category input))
-                    (:max_price input)  (assoc :max-price (:max_price input))
-                    (:min_rating input) (assoc :min-rating (:min_rating input)))])
+    (rf/dispatch-sync [:change-filters
+                       (cond-> {}
+                         (:category input)   (assoc :category (:category input))
+                         (:max_price input)  (assoc :max-price (:max_price input))
+                         (:min_rating input) (assoc :min-rating (:min_rating input)))])
 
     "change_sort"
-    (rf/dispatch [:change-sort
-                  (keyword (:field input))
-                  (keyword (:dir input))])
+    (rf/dispatch-sync [:change-sort
+                       (keyword (:field input))
+                       (keyword (:dir input))])
 
     "query_products"
     nil ;; read-only
+
+    "open_pdp"
+    (rf/dispatch [:open-pdp (:product_id input)])
 
     "get_current_products"
     nil ;; read-only
@@ -94,8 +103,31 @@
 
 ;; Execute a read tool and return results to Claude
 
+(defn visible-product-ids []
+  (let [db         @rf-db/app-db
+        result-ids (seq (:result-ids db))
+        filters    (:filters db)
+        all        (product-db/all-products)
+        base       (if result-ids
+                     (let [by-id (into {} (map (juxt :product/id identity) all))]
+                       (keep by-id result-ids))
+                     all)
+        visible    (cond->> base
+                     (:category filters)  (filter #(= (:product/category %) (:category filters)))
+                     (:max-price filters) (filter #(<= (:product/price %) (:max-price filters))))]
+    (mapv :product/id visible)))
+
 (defn execute-read-tool [{:keys [name input]}]
   (case name
+    "change_view"
+    (js/JSON.stringify (clj->js {:product_ids (visible-product-ids)}))
+
+    "change_filters"
+    (js/JSON.stringify (clj->js {:product_ids (visible-product-ids)}))
+
+    "change_sort"
+    (js/JSON.stringify (clj->js {:product_ids (visible-product-ids)}))
+
     "query_products"
     (let [all      (product-db/all-products)
           filtered (cond->> all

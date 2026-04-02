@@ -13,6 +13,18 @@
 (rf/reg-sub :db-version (fn [db _] (:db-version db)))
 (rf/reg-sub :result-ids (fn [db _] (:result-ids db)))
 (rf/reg-sub :active-query (fn [db _] (:active-query db)))
+(rf/reg-sub :pdp-product-id (fn [db _] (:pdp-product-id db)))
+
+(rf/reg-sub
+ :pdp-product
+ :<- [:pdp-product-id]
+ :<- [:db-version]
+ (fn [[id _] _]
+   (when id
+     (first (d/q '[:find [(pull ?e [*]) ...]
+                   :in $ ?id
+                   :where [?e :product/id ?id]]
+                 @product-db/conn id)))))
 
 (rf/reg-sub
  :products
