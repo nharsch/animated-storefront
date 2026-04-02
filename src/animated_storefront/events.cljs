@@ -8,11 +8,11 @@
   {:view           :grid      ;; :grid | :list
    :filters        {}
    :sort           {:field :price :dir :asc}
-   :selected-ids   []
    :result-ids     nil        ;; when set, grid/list show only these products
-   :active-query   nil        ;; the datalog query that produced current result-ids
    :pdp-product-id nil        ;; when set, PDP modal is open
-   :chat           {:messages [] :loading false}
+   :chat           {:messages    []
+                    :loading     false
+                    :last-search-ids []}  ;; IDs from most recent search_products call
    :db-version     0})
 
 ;; -- App lifecycle ------------------------------------------------------------
@@ -28,13 +28,12 @@
  (fn [db [_ view product-ids]]
    (cond-> (assoc db :view view)
      product-ids       (assoc :result-ids product-ids)
-     (not product-ids) (assoc :result-ids nil)
-     (#{:compare :pdp} view) (assoc :selected-ids product-ids))))
+     (not product-ids) (assoc :result-ids nil))))
 
 (rf/reg-event-db
- :set-active-query
- (fn [db [_ query]]
-   (assoc db :active-query query)))
+ :set-last-search-ids
+ (fn [db [_ ids]]
+   (assoc-in db [:chat :last-search-ids] ids)))
 
 ;; -- PDP modal ----------------------------------------------------------------
 
@@ -60,17 +59,17 @@
          db' (-> db
                  (assoc :result-ids nil)
                  (update :filters #(->> (merge % new-filters)
-                                        (remove (fn [[_ v]] (nil? v)))
+                                        (remove (fn [[_ v]] (or (nil? v) (= v ""))))
                                         (into {}))))]
      (if had-results?
-       (ui-note (assoc db' :active-query nil) "User applied a manual filter — chat result cleared.")
+       (ui-note db' "User applied a manual filter — chat result cleared.")
        db'))))
 
 (rf/reg-event-db
  :clear-filters
  (fn [db _]
    (let [had-results? (seq (:result-ids db))
-         db' (assoc db :filters {} :result-ids nil :active-query nil)]
+         db' (assoc db :filters {} :result-ids nil)]
      (if had-results?
        (ui-note db' "User cleared filters and chat result.")
        db'))))

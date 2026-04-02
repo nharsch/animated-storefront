@@ -6,18 +6,41 @@
             [animated-storefront.db :as product-db]
             [clojure.string :as str]))
 
+(defn visible-products []
+  (let [db         @rf-db/app-db
+        result-ids (seq (:result-ids db))
+        filters    (:filters db)
+        all        (product-db/all-products)
+        base       (if result-ids
+                     (let [by-id (into {} (map (juxt :product/id identity) all))]
+                       (keep by-id result-ids))
+                     all)]
+    (cond->> base
+      (:category filters)  (filter #(= (:product/category %) (:category filters)))
+      (:max-price filters) (filter #(<= (:product/price %) (:max-price filters))))))
+
 (defn current-ui-state []
-  (let [db @rf-db/app-db]
-    {:view         (name (:view db))
-     :filters      (:filters db)
-     :sort         (:sort db)
-     :result-ids   (:result-ids db)
-     :active-query (:active-query db)
-     :categories   (vec (product-db/categories))}))
+  (let [db       @rf-db/app-db
+        visible  (visible-products)
+        pdp-id   (:pdp-product-id db)
+        pdp-product (when pdp-id
+                      (first (filter #(= (:product/id %) pdp-id)
+                                     (product-db/all-products))))]
+    {:view          (name (:view db))
+     :filters       (:filters db)
+     :sort          (:sort db)
+     :result-ids    (:result-ids db)
+     :visible       visible
+     :pdp-product   pdp-product
+     :categories    (vec (product-db/categories))}))
 
 ;; TODO: maybe put this in a seperate markdown file? would need templating...
+(defn format-product [p]
+  (str (:product/title p) " ($" (.toFixed (:product/price p) 2) ", ★" (:product/rating p) ", id:" (:product/id p) ")"))
+
 (defn system-prompt []
-  (let [state (current-ui-state)]
+  (let [state   (current-ui-state)
+        visible (:visible state)]
     (str "You are a helpful shopping assistant for an online storefront. "
          "You can control the UI by using the provided tools, and answer customer questions "
          "by querying the product catalog.\n\n"
@@ -25,10 +48,14 @@
          "view: " (:view state) "\n"
          "filters: " (str (:filters state)) "\n"
          "sort: " (str (:sort state)) "\n"
-         (when (seq (:result-ids state))
-           (str "pinned-result-ids: " (str (:result-ids state)) "\n"))
-         (when (:active-query state)
-           (str "active-query: " (str (:active-query state)) "\n"))
+         (if (seq (:result-ids state))
+           (str "pinned-result-ids: " (str (:result-ids state)) "\n"
+                (when (<= (count visible) 20)
+                  (str "on screen (" (count visible) " products): "
+                       (str/join ", " (map format-product visible)) "\n")))
+           (str "showing all products (" (count visible) " total)\n"))
+         (when (:pdp-product state)
+           (str "customer is viewing: " (format-product (:pdp-product state)) "\n"))
          "\n"
          "## Product catalog\n"
          "Products have these attributes: title, price, category, rating, tags (many), thumbnail, stock.\n"
@@ -60,6 +87,14 @@
          "Pass the pinned-result-ids as the second argument (after $) in the query input. "
          "Do NOT pass rules when using :in $ [?id ...] — just the query.\n\n"
          "## Behavior\n"
+         "- By default, always show products on screen when you find them. Use search_and_show to find "
+         "and display in one step, or use search_products to review results first, then show_results "
+         "to display them — show_results always uses the last search_products results, no IDs needed.\n"
+         "- When adding more items to what's already on screen, use search_and_show or search_products "
+         "+ show_results — both automatically join with what's already pinned. Never manually copy or "
+         "combine product IDs.\n"
+         "- When the customer doesn't want to see a specific item, use remove_from_view with the "
+         "product name. Never reconstruct the remaining IDs manually with change_view.\n"
          "- Use tools to change the UI when the customer wants to browse or navigate.\n"
          "- When the customer says 'show me X' or 'can you show me', you MUST actually filter the UI — "
          "use change_filters for simple category/price filters, or datalog_query + change_view for anything else. "
@@ -78,9 +113,8 @@
          "use change_sort to reorder what's on screen. Sort applies within the current result set — "
          "it does not clear pinned results.\n"
          "- When a customer asks about a specific product or wants to see its details, use open_pdp "
-         "to open the product detail modal — don't just describe it in text. Never guess a product_id. "
-         "change_filters, change_view, and change_sort all return {product_ids: [...]} — use those IDs "
-         "to call open_pdp. If you don't have IDs in context, run query_products first.\n"
+         "with product_title (e.g. {product_title: \"Citrus Squeezer Yellow\"}) — this is safer than "
+         "product_id and avoids ID errors. Only use product_id if you just received it from a tool result.\n"
          "- When a customer asks about a specific product or type (e.g. 'is the nail polish good?'), "
          "always query the catalog first and answer based on what you find. Never ask for clarification "
          "when you can just look it up.\n"
@@ -122,10 +156,13 @@
                    (if (and (= stop-reason "tool_use") (seq tool-blocks))
                      ;; Execute tools, collect results, loop
                      (let [tool-results (mapv (fn [block]
+                                                (js/console.log "[tool-call]" (:name block) (clj->js (:input block)))
                                                 (tools/dispatch-tool-call! block)
-                                                {:type        "tool_result"
-                                                 :tool_use_id (:id block)
-                                                 :content     (str (tools/execute-read-tool block))})
+                                                (let [result (str (tools/execute-read-tool block))]
+                                                  (js/console.log "[tool-result]" (:name block) result)
+                                                  {:type        "tool_result"
+                                                   :tool_use_id (:id block)
+                                                   :content     result}))
                                               tool-blocks)
                            next-messages (conj messages
                                                {:role "assistant" :content content}
