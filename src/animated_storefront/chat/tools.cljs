@@ -44,6 +44,12 @@
                                 :max_price {:type "number" :description "Maximum price"}
                                 :query     {:type "string" :description "Text to match against title/description"}}}}
 
+   {:name        "search_products"
+    :description "Search the product catalog by keyword. Matches against product title and description. Returns matching products with their IDs. Use this whenever the customer names a specific product or ingredient — it's the simplest way to find what's in the catalog."
+    :input_schema {:type       "object"
+                   :properties {:query {:type "string" :description "Word or phrase to search for"}}
+                   :required   ["query"]}}
+
    {:name        "open_pdp"
     :description "Open the product detail modal for a specific product. Use when the customer wants to see full details on a single product."
     :input_schema {:type       "object"
@@ -87,11 +93,21 @@
                        (keyword (:field input))
                        (keyword (:dir input))])
 
+    "search_products"
+    nil ;; read-only
+
     "query_products"
     nil ;; read-only
 
     "open_pdp"
-    (rf/dispatch [:open-pdp (:product_id input)])
+    (let [pid (:product_id input)
+          exists? (seq (d/q '[:find [?e ...]
+                              :in $ ?id
+                              :where [?e :product/id ?id]]
+                            @product-db/conn pid))]
+      (if exists?
+        (rf/dispatch [:open-pdp pid])
+        (js/console.warn "open_pdp: unknown product_id" pid)))
 
     "get_current_products"
     nil ;; read-only
@@ -128,6 +144,18 @@
     "change_sort"
     (js/JSON.stringify (clj->js {:product_ids (visible-product-ids)}))
 
+    "search_products"
+    (let [q       (clojure.string/lower-case (:query input))
+          results (filter #(some (fn [field]
+                                   (when-let [v (get % field)]
+                                     (clojure.string/includes? (clojure.string/lower-case v) q)))
+                                 [:product/title :product/description])
+                          (product-db/all-products))]
+      (js/JSON.stringify
+       (clj->js (mapv #(select-keys % [:product/id :product/title :product/price
+                                       :product/category :product/rating])
+                      results))))
+
     "query_products"
     (let [all      (product-db/all-products)
           filtered (cond->> all
@@ -142,6 +170,16 @@
       (clj->js (mapv #(select-keys % [:product/id :product/title :product/price
                                       :product/category :product/rating])
                      filtered)))
+    "open_pdp"
+    (let [pid     (:product_id input)
+          exists? (seq (d/q '[:find [?e ...]
+                              :in $ ?id
+                              :where [?e :product/id ?id]]
+                            @product-db/conn pid))]
+      (if exists?
+        (js/JSON.stringify (clj->js {:ok true :product_id pid}))
+        (str "ERROR: product_id " pid " does not exist. Use query_products or datalog_query to find the correct id first.")))
+
     "get_current_products"
     (let [db         @rf-db/app-db
           result-ids (seq (:result-ids db))
