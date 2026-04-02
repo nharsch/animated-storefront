@@ -48,15 +48,7 @@ The Lambda Function URL is baked into the compiled JS at build time.
 ### 3. Push to GitHub Pages
 
 ```bash
-cd public
-git init
-git checkout -b gh-pages
-git add -A
-git commit -m "Deploy $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-git remote add origin git@github.com:nharsch/animated-storefront.git
-git push --force origin gh-pages
-rm -rf .git
-cd ..
+./scripts/deploy-gh-pages.sh
 ```
 
 Site will be live at: https://nharsch.github.io/animated-storefront/
