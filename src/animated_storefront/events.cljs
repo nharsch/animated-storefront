@@ -67,7 +67,7 @@
 (rf/reg-event-db
  :change-sort
  (fn [db [_ field dir]]
-   (assoc db :sort {:field field :dir dir} :result-ids nil :active-query nil)))
+   (assoc db :sort {:field field :dir dir})))
 
 ;; -- Chat ---------------------------------------------------------------------
 

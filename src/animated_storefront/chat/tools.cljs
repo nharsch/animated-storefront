@@ -51,10 +51,13 @@
    {:name        "datalog_query"
     :description "Run a DataScript Datalog query against the product catalog. Use for complex or cross-category searches. Results are returned to you first so you can verify they match the customer's intent before changing the UI. If the query has a parse or execution error it will be returned starting with 'ERROR:' — fix and retry."
     :input_schema {:type       "object"
-                   :properties {:query {:type        "string"
-                                        :description "DataScript Datalog query in EDN format."}
-                                :rules {:type        "string"
-                                        :description "Optional Datalog rules in EDN format, required when query uses :in $ %."}}
+                   :properties {:query      {:type        "string"
+                                             :description "DataScript Datalog query in EDN format."}
+                                :rules      {:type        "string"
+                                             :description "Optional Datalog rules in EDN format, required when query uses :in $ %."}
+                                :result_ids {:type        "array"
+                                             :items       {:type "integer"}
+                                             :description "Optional list of product IDs to query within (e.g. the current pinned-result-ids). Use when query has :in $ [?id ...]."}}
                    :required   ["query"]}}])
 
 ;; Dispatch a tool call from Claude to the re-frame event bus
@@ -126,11 +129,13 @@
 
     "datalog_query"
     (try
-      (let [q       (edn/read-string (:query input))
-            rules   (when (:rules input) (edn/read-string (:rules input)))
-            results (if rules
-                      (d/q q @product-db/conn rules)
-                      (d/q q @product-db/conn))]
+      (let [q          (edn/read-string (:query input))
+            rules      (when (:rules input) (edn/read-string (:rules input)))
+            result-ids (:result_ids input)
+            results    (cond
+                         result-ids (d/q q @product-db/conn result-ids)
+                         rules      (d/q q @product-db/conn rules)
+                         :else      (d/q q @product-db/conn))]
         (rf/dispatch [:set-active-query {:query (:query input) :rules (:rules input)}])
         (js/JSON.stringify (clj->js results)))
       (catch :default e

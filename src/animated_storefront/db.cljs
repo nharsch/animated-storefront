@@ -18,7 +18,7 @@
                              :product/price       (:price p)
                              :product/category    (:category p)
                              :product/thumbnail   (:thumbnail p)
-                             :product/rating      (get-in p [:rating :rate])
+                             :product/rating      (:rating p)
                              :product/stock       (:stock p)
                              :product/tags        (or (:tags p) [])}
                             (remove (fn [[_ v]] (nil? v)))
