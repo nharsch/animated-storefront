@@ -4,7 +4,7 @@
 (rf/reg-fx
  :fetch-products
  (fn [_]
-   (-> (js/fetch "https://dummyjson.com/products?limit=100&select=id,title,description,price,category,thumbnail,rating,stock,tags")
+   (-> (js/fetch "https://dummyjson.com/products?limit=100&select=id,title,description,price,category,thumbnail,rating,stock,tags,brand")
        (.then #(.json %))
        (.then (fn [resp]
                 (let [products (-> (js->clj resp :keywordize-keys true) :products)]

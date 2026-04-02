@@ -1,6 +1,23 @@
 const https = require("https");
+const {
+  SecretsManagerClient,
+  GetSecretValueCommand,
+} = require("@aws-sdk/client-secrets-manager");
+
+const secretsClient = new SecretsManagerClient({});
+let cachedApiKey = null;
+
+async function getApiKey() {
+  if (cachedApiKey) return cachedApiKey;
+  const response = await secretsClient.send(
+    new GetSecretValueCommand({ SecretId: process.env.SECRET_ARN })
+  );
+  cachedApiKey = response.SecretString;
+  return cachedApiKey;
+}
 
 exports.handler = async (event) => {
+  const apiKey = await getApiKey();
   const body = JSON.parse(event.body);
 
   const payload = JSON.stringify({
@@ -20,7 +37,7 @@ exports.handler = async (event) => {
         headers: {
           "Content-Type": "application/json",
           "anthropic-version": "2023-06-01",
-          "x-api-key": process.env.ANTHROPIC_API_KEY,
+          "x-api-key": apiKey,
         },
       },
       (res) => {

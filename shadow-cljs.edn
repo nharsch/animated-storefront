@@ -9,4 +9,5 @@
                 :modules {:main {:init-fn animated-storefront.core/init}}
                 :dev  {:closure-defines {animated-storefront.config/api-key  #shadow/env "ANTHROPIC_API_KEY"
                                          animated-storefront.config/dev-mode true}}
-                :release {:closure-defines {animated-storefront.config/dev-mode false}}}}}
+                :release {:closure-defines {animated-storefront.config/dev-mode false
+                                            animated-storefront.config/proxy-url #shadow/env "CHAT_API_URL"}}}}}

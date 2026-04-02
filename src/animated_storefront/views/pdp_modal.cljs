@@ -4,7 +4,7 @@
 (defn pdp-modal []
   (let [product @(rf/subscribe [:pdp-product])]
     (when product
-      (let [{:product/keys [title description price category rating stock thumbnail tags]} product]
+      (let [{:product/keys [title description price category rating stock thumbnail tags brand]} product]
         [:div {:class    "fixed inset-0 z-50 flex items-center justify-center p-4"
                :on-click #(when (= (.-target %) (.-currentTarget %))
                             (rf/dispatch [:close-pdp]))}
@@ -21,7 +21,8 @@
                  :class "w-full h-64 object-cover rounded-t-2xl"}]
           ;; Content
           [:div {:class "p-6"}
-           [:p {:class "text-xs text-gray-400 uppercase tracking-wide mb-1"} category]
+           [:p {:class "text-xs text-gray-400 uppercase tracking-wide mb-1"}
+            category (when brand (str " · " brand))]
            [:h2 {:class "text-xl font-semibold text-gray-900 mb-3"} title]
            ;; Price + rating row
            [:div {:class "flex items-center gap-4 mb-4"}

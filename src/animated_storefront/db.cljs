@@ -20,7 +20,8 @@
                              :product/thumbnail   (:thumbnail p)
                              :product/rating      (:rating p)
                              :product/stock       (:stock p)
-                             :product/tags        (or (:tags p) [])}
+                             :product/tags        (or (:tags p) [])
+                             :product/brand       (:brand p)}
                             (remove (fn [[_ v]] (nil? v)))
                             (into {})))
                      products)))
