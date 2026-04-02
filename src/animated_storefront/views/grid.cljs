@@ -3,9 +3,10 @@
             [animated-storefront.views.product-card :as card]))
 
 (defn filter-bar []
-  (let [categories @(rf/subscribe [:categories])
-        filters    @(rf/subscribe [:filters])
-        sort-state @(rf/subscribe [:sort])]
+  (let [categories  @(rf/subscribe [:categories])
+        filters     @(rf/subscribe [:filters])
+        sort-state  @(rf/subscribe [:sort])
+        result-ids  @(rf/subscribe [:result-ids])]
     [:div {:class "flex flex-wrap gap-3 mb-6 items-center"}
      ;; Category filter
      [:select {:class     "text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white"
@@ -25,10 +26,10 @@
       [:option {:value "rating-desc"} "Top Rated"]
       [:option {:value "title-asc"} "Name A–Z"]]
      ;; Clear
-     (when (seq filters)
+     (when (or (seq filters) (seq result-ids))
        [:button {:class    "text-sm text-gray-400 hover:text-gray-600"
                  :on-click #(rf/dispatch [:clear-filters])}
-        "Clear filters"])]))
+        (if (seq result-ids) "Clear chat filter" "Clear filters")])]))
 
 (defn grid-view []
   (let [products @(rf/subscribe [:products])

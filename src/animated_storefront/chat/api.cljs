@@ -8,11 +8,12 @@
 
 (defn current-ui-state []
   (let [db @rf-db/app-db]
-    {:view       (name (:view db))
-     :filters    (:filters db)
-     :sort       (:sort db)
-     :result-ids (:result-ids db)
-     :categories (vec (product-db/categories))}))
+    {:view         (name (:view db))
+     :filters      (:filters db)
+     :sort         (:sort db)
+     :result-ids   (:result-ids db)
+     :active-query (:active-query db)
+     :categories   (vec (product-db/categories))}))
 
 ;; TODO: maybe put this in a seperate markdown file? would need templating...
 (defn system-prompt []
@@ -26,6 +27,8 @@
          "sort: " (str (:sort state)) "\n"
          (when (seq (:result-ids state))
            (str "pinned-result-ids: " (str (:result-ids state)) "\n"))
+         (when (:active-query state)
+           (str "active-query: " (str (:active-query state)) "\n"))
          "\n"
          "## Product catalog\n"
          "Products have these attributes: title, price, category, rating, tags (many), thumbnail, stock.\n"
@@ -43,7 +46,9 @@
          "         [(wearable? ?e) [?e :product/category \\\"mens-shirts\\\"]]\n"
          "         [(wearable? ?e) [?e :product/tags ?t] [(contains? #{\\\"clothing\\\" \\\"footwear\\\" \\\"watches\\\"} ?t)]]]\"\n\n"
          "Always pull at minimum :product/id, :product/title, :product/price, :product/category.\n"
-         "Review datalog_query results before changing the UI — only proceed if results match intent.\n\n"
+         "After a datalog_query, if you want to show the results in the UI, extract the :product/id "
+         "values from the results and pass them as product_ids to change_view. Do not call change_view "
+         "without product_ids after a datalog_query — without IDs the UI will show all products.\n\n"
          "## Behavior\n"
          "- Use tools to change the UI when the customer wants to browse or navigate.\n"
          "- Use datalog_query for complex or cross-category searches; query_products for simple lookups.\n"
@@ -106,6 +111,7 @@
 (defn send-message! [user-text]
   (rf/dispatch-sync [:chat/append-message {:role "user" :content user-text}])
   (rf/dispatch [:chat/set-loading true])
-  (let [messages (mapv #(select-keys % [:role :content])
-                       (:messages (:chat @rf-db/app-db)))]
+  (let [messages (->> (:messages (:chat @rf-db/app-db))
+                      (remove #(= (:role %) "ui"))
+                      (mapv #(select-keys % [:role :content])))]
     (run-agentic-loop! messages 0)))

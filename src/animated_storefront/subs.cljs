@@ -3,6 +3,7 @@
             [animated-storefront.db :as product-db]
             [datascript.core :as d]))
 
+;; TODO: should we save submitted query in state?
 (rf/reg-sub :view (fn [db _] (:view db)))
 (rf/reg-sub :filters (fn [db _] (:filters db)))
 (rf/reg-sub :sort (fn [db _] (:sort db)))
@@ -11,6 +12,7 @@
 (rf/reg-sub :products-loading (fn [db _] (:products-loading db)))
 (rf/reg-sub :db-version (fn [db _] (:db-version db)))
 (rf/reg-sub :result-ids (fn [db _] (:result-ids db)))
+(rf/reg-sub :active-query (fn [db _] (:active-query db)))
 
 (rf/reg-sub
  :products

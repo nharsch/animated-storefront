@@ -4,13 +4,19 @@
             [animated-storefront.chat.api :as api]))
 
 (defn message-bubble [{:keys [role content]}]
-  (let [user? (= role "user")]
-    [:div {:class (str "flex " (if user? "justify-end" "justify-start") " mb-3")}
-     [:div {:class (str "max-w-[80%] rounded-2xl px-4 py-2 text-sm "
-                        (if user?
-                          "bg-blue-600 text-white rounded-br-sm"
-                          "bg-white border border-gray-100 text-gray-800 rounded-bl-sm"))}
-      content]]))
+  (cond
+    (= role "ui")
+    [:div {:class "flex justify-center mb-3"}
+     [:span {:class "text-xs text-gray-400 italic"} content]]
+
+    :else
+    (let [user? (= role "user")]
+      [:div {:class (str "flex " (if user? "justify-end" "justify-start") " mb-3")}
+       [:div {:class (str "max-w-[80%] rounded-2xl px-4 py-2 text-sm "
+                          (if user?
+                            "bg-blue-600 text-white rounded-br-sm"
+                            "bg-white border border-gray-100 text-gray-800 rounded-bl-sm"))}
+        content]])))
 
 (defn chat-panel []
   (let [input    (r/atom "")

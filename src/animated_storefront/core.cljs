@@ -15,6 +15,7 @@
 
 (defn ^:dev/after-load re-render []
   (rf/clear-subscription-cache!)
+  (reset! root nil)
   (mount-root))
 
 (defn init []

@@ -1,5 +1,6 @@
 (ns animated-storefront.chat.tools
   (:require [re-frame.core :as rf]
+            [re-frame.db :as rf-db]
             [cljs.reader :as edn]
             [datascript.core :as d]
             [animated-storefront.db :as product-db]))
@@ -43,6 +44,10 @@
                                 :max_price {:type "number" :description "Maximum price"}
                                 :query     {:type "string" :description "Text to match against title/description"}}}}
 
+   {:name        "get_current_products"
+    :description "Returns the products currently visible on screen, respecting any active filters and pinned result set. Use this when the customer asks about 'these', 'what I'm looking at', 'which of these', etc."
+    :input_schema {:type "object" :properties {}}}
+
    {:name        "datalog_query"
     :description "Run a DataScript Datalog query against the product catalog. Use for complex or cross-category searches. Results are returned to you first so you can verify they match the customer's intent before changing the UI. If the query has a parse or execution error it will be returned starting with 'ERROR:' — fix and retry."
     :input_schema {:type       "object"
@@ -76,6 +81,9 @@
     "query_products"
     nil ;; read-only
 
+    "get_current_products"
+    nil ;; read-only
+
     "datalog_query"
     nil ;; read-only — Claude reviews results before deciding to change UI
 
@@ -99,6 +107,23 @@
       (clj->js (mapv #(select-keys % [:product/id :product/title :product/price
                                       :product/category :product/rating])
                      filtered)))
+    "get_current_products"
+    (let [db         @rf-db/app-db
+          result-ids (seq (:result-ids db))
+          filters    (:filters db)
+          all        (product-db/all-products)
+          base       (if result-ids
+                       (let [by-id (into {} (map (juxt :product/id identity) all))]
+                         (keep by-id result-ids))
+                       all)
+          visible    (cond->> base
+                       (:category filters)  (filter #(= (:product/category %) (:category filters)))
+                       (:max-price filters) (filter #(<= (:product/price %) (:max-price filters))))]
+      (js/JSON.stringify
+       (clj->js (mapv #(select-keys % [:product/id :product/title :product/price
+                                       :product/category :product/rating :product/tags])
+                      visible))))
+
     "datalog_query"
     (try
       (let [q       (edn/read-string (:query input))
@@ -106,6 +131,7 @@
             results (if rules
                       (d/q q @product-db/conn rules)
                       (d/q q @product-db/conn))]
+        (rf/dispatch [:set-active-query {:query (:query input) :rules (:rules input)}])
         (js/JSON.stringify (clj->js results)))
       (catch :default e
         (str "ERROR: " (.-message e))))
