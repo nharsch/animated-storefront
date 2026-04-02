@@ -5,6 +5,19 @@
             [datascript.core :as d]
             [animated-storefront.db :as product-db]))
 
+(defn text-search [q products]
+  (let [q (clojure.string/lower-case q)
+        title+tag-matches (filter
+                           #(or (clojure.string/includes? (clojure.string/lower-case (get % :product/title "")) q)
+                                (some (fn [t] (clojure.string/includes? (clojure.string/lower-case t) q))
+                                      (get % :product/tags [])))
+                           products)]
+    (if (seq title+tag-matches)
+      title+tag-matches
+      ;; fall back to description only if title+tag search is empty
+      (filter #(clojure.string/includes? (clojure.string/lower-case (get % :product/description "")) q)
+              products))))
+
 ;; Tool definitions sent to Claude API
 
 (def tool-definitions
@@ -130,11 +143,7 @@
 
     "search_and_show"
     (let [q        (clojure.string/lower-case (:query input))
-          matches  (filter #(some (fn [field]
-                                    (when-let [v (get % field)]
-                                      (clojure.string/includes? (clojure.string/lower-case v) q)))
-                                  [:product/title :product/description])
-                           (product-db/all-products))
+          matches  (text-search q (product-db/all-products))
           new-ids  (mapv :product/id matches)
           current  (or (:result-ids @rf-db/app-db) [])
           joined   (vec (distinct (concat current new-ids)))]
@@ -203,11 +212,7 @@
 
     "search_and_show"
     (let [q       (clojure.string/lower-case (:query input))
-          matches (filter #(some (fn [field]
-                                   (when-let [v (get % field)]
-                                     (clojure.string/includes? (clojure.string/lower-case v) q)))
-                                 [:product/title :product/description])
-                          (product-db/all-products))]
+          matches (text-search q (product-db/all-products))]
       (js/JSON.stringify (clj->js {:found    (mapv #(select-keys % [:product/id :product/title :product/price :product/category :product/rating]) matches)
                                    :on_screen (visible-product-ids)})))
 
@@ -219,16 +224,13 @@
 
     "search_products"
     (let [q       (clojure.string/lower-case (:query input))
-          results (filter #(some (fn [field]
-                                   (when-let [v (get % field)]
-                                     (clojure.string/includes? (clojure.string/lower-case v) q)))
-                                 [:product/title :product/description])
-                          (product-db/all-products))]
+          results (text-search q (product-db/all-products))]
       (when (seq results)
         (rf/dispatch [:set-last-search-ids (mapv :product/id results)]))
       (js/JSON.stringify
        (clj->js (mapv #(select-keys % [:product/id :product/title :product/price
-                                       :product/category :product/rating])
+                                       :product/category :product/rating
+                                       :product/tags :product/description])
                       results))))
 
     "query_products"
@@ -236,12 +238,7 @@
           filtered (cond->> all
                      (:category input)  (filter #(= (:product/category %) (:category input)))
                      (:max_price input) (filter #(<= (:product/price %) (:max_price input)))
-                     (:query input)     (filter #(some (fn [field]
-                                                         (when-let [v (get % field)]
-                                                           (clojure.string/includes?
-                                                            (clojure.string/lower-case v)
-                                                            (clojure.string/lower-case (:query input)))))
-                                                       [:product/title :product/description])))]
+                     (:query input)     (#(text-search (:query input) %)))]
       (clj->js (mapv #(select-keys % [:product/id :product/title :product/price
                                       :product/category :product/rating])
                      filtered)))
