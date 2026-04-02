@@ -1,5 +1,7 @@
 (ns animated-storefront.chat.tools
   (:require [re-frame.core :as rf]
+            [cljs.reader :as edn]
+            [datascript.core :as d]
             [animated-storefront.db :as product-db]))
 
 ;; Tool definitions sent to Claude API
@@ -37,9 +39,18 @@
    {:name        "query_products"
     :description "Search the product catalog to answer customer questions. Returns matching products."
     :input_schema {:type       "object"
-                   :properties {:category {:type "string" :description "Filter by category"}
+                   :properties {:category  {:type "string" :description "Filter by category"}
                                 :max_price {:type "number" :description "Maximum price"}
-                                :query    {:type "string" :description "Text to match against title/description"}}}}])
+                                :query     {:type "string" :description "Text to match against title/description"}}}}
+
+   {:name        "datalog_query"
+    :description "Run a DataScript Datalog query against the product catalog. Use for complex or cross-category searches. Results are returned to you first so you can verify they match the customer's intent before changing the UI. If the query has a parse or execution error it will be returned starting with 'ERROR:' — fix and retry."
+    :input_schema {:type       "object"
+                   :properties {:query {:type        "string"
+                                        :description "DataScript Datalog query in EDN format."}
+                                :rules {:type        "string"
+                                        :description "Optional Datalog rules in EDN format, required when query uses :in $ %."}}
+                   :required   ["query"]}}])
 
 ;; Dispatch a tool call from Claude to the re-frame event bus
 
@@ -63,7 +74,10 @@
                   (keyword (:dir input))])
 
     "query_products"
-    nil ;; read-only, result returned to Claude — no dispatch needed
+    nil ;; read-only
+
+    "datalog_query"
+    nil ;; read-only — Claude reviews results before deciding to change UI
 
     (js/console.warn "Unknown tool:" name)))
 
@@ -85,4 +99,15 @@
       (clj->js (mapv #(select-keys % [:product/id :product/title :product/price
                                       :product/category :product/rating])
                      filtered)))
+    "datalog_query"
+    (try
+      (let [q       (edn/read-string (:query input))
+            rules   (when (:rules input) (edn/read-string (:rules input)))
+            results (if rules
+                      (d/q q @product-db/conn rules)
+                      (d/q q @product-db/conn))]
+        (js/JSON.stringify (clj->js results)))
+      (catch :default e
+        (str "ERROR: " (.-message e))))
+
     nil))
