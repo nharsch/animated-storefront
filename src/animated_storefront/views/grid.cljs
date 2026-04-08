@@ -23,7 +23,21 @@
     [:div {:class "flex flex-wrap gap-3 mb-6 items-center"}
      ;; Category filter (multi-select dropdown)
      [:div {:class "relative"}
-      [:details {:class "group"}
+      [:details {:class "group"
+                 :ref (fn [el]
+                        (when el
+                          (let [handler (fn [e]
+                                          (when-not (.contains el (.-target e))
+                                            (set! (.-open el) false)))]
+                            ;; Store handler on element so we can clean up
+                            (when-not (.-clickHandler el)
+                              (set! (.-clickHandler el) handler)
+                              (.addEventListener js/document "click" handler true))
+                            ;; Cleanup on unmount
+                            (set! (.-cleanup el)
+                                  (fn []
+                                    (when (.-clickHandler el)
+                                      (.removeEventListener js/document "click" (.-clickHandler el) true)))))))}
        [:summary {:class "text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white cursor-pointer hover:bg-gray-50 list-none flex items-center justify-between gap-2 min-w-[200px]"}
         [:span (if (seq selected-categories)
                  (str (count selected-categories) " categories")
