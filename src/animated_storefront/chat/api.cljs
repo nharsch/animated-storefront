@@ -35,27 +35,69 @@
      :categories    (vec (product-db/categories))}))
 
 ;; TODO: maybe put this in a seperate markdown file? would need templating...
-(defn format-product [p]
-  (str (:product/title p) " ($" (.toFixed (:product/price p) 2) ", ★" (:product/rating p) ", id:" (:product/id p) ")"))
+(defn format-product-brief [p]
+  "Brief format for query results - just enough to identify and reference"
+  (str "id:" (:product/id p) " \"" (:product/title p) "\" $" (.toFixed (:product/price p) 2) " ★" (:product/rating p)))
+
+(defn format-product-verbose [p]
+  "Verbose format for UI state - full details of what user sees"
+  (str (:product/title p)
+       " (id:" (:product/id p)
+       ", $" (.toFixed (:product/price p) 2)
+       ", ★" (:product/rating p)
+       ", " (:product/category p)
+       (when (seq (:product/tags p))
+         (str ", tags: " (clojure.string/join ", " (take 3 (:product/tags p)))))
+       ")"))
+
+(defn viewport-visible-count []
+  "Estimate how many products are visible based on viewport size.
+   Grid layout: 2 cols (mobile) | 3 cols (md) | 4 cols (lg).
+   Assume ~2-3 rows visible on average viewport."
+  (let [width (.-innerWidth js/window)]
+    (cond
+      (>= width 1024) 12  ; lg: 4 cols × 3 rows
+      (>= width 768)  6   ; md: 3 cols × 2 rows
+      :else           4))) ; mobile: 2 cols × 2 rows
 
 (defn system-prompt []
-  (let [state   (current-ui-state)
-        visible (:visible state)]
+  (let [state          (current-ui-state)
+        visible        (:visible state)
+        result-ids     (:result-ids state)
+        viewport-count (viewport-visible-count)
+        actually-visible (take viewport-count visible)]
     (str "You are a helpful shopping assistant for an online storefront. "
          "You can control the UI by using the provided tools, and answer customer questions "
          "by querying the product catalog.\n\n"
          "## Current UI state\n"
          "view: " (:view state) "\n"
          "filters: " (str (:filters state)) "\n"
-         "sort: " (str (:sort state)) "\n"
-         (if (seq (:result-ids state))
-           (str "pinned-result-ids: " (str (:result-ids state)) "\n"
-                (when (<= (count visible) 20)
-                  (str "on screen (" (count visible) " products): "
-                       (str/join ", " (map format-product visible)) "\n")))
-           (str "showing all products (" (count visible) " total)\n"))
+         "sort: " (str (:sort state)) "\n\n"
+
+         ;; Query results: brief, unlimited
+         (if (seq result-ids)
+           (str "### Pinned query results (" (count result-ids) " products)\n"
+                "These are the products you've selected to show. All product IDs are listed here:\n"
+                (str/join "\n" (map format-product-brief visible)) "\n\n")
+           (str "### All products in catalog (" (count visible) " total)\n"
+                "You haven't pinned a specific result set yet. When showing all products, "
+                "you MUST use search tools to find specific items - never guess product IDs.\n\n"))
+
+         ;; UI visibility: verbose, viewport-aware
+         (str "### What the customer sees on screen (viewport)\n"
+              "The customer can see approximately " viewport-count " products at once. "
+              "Currently visible in their viewport:\n"
+              (if (seq actually-visible)
+                (str/join "\n" (map format-product-verbose actually-visible))
+                "No products visible")
+              "\n"
+              (when (> (count visible) viewport-count)
+                (str "\n(" (- (count visible) viewport-count) " more products below the fold)\n"))
+              "\n")
+
          (when (:pdp-product state)
-           (str "customer is viewing: " (format-product (:pdp-product state)) "\n"))
+           (str "### Product detail modal (open)\n"
+                "Customer is viewing details: " (format-product-verbose (:pdp-product state)) "\n\n"))
          "\n"
          "## Product catalog\n"
          "Products have these attributes: title, price, category, rating, tags (many), thumbnail, stock.\n"
