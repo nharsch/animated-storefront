@@ -75,7 +75,8 @@ resource "aws_lambda_function" "chat_proxy" {
   role             = aws_iam_role.lambda_role.arn
   handler          = "index.handler"
   runtime          = "nodejs20.x"
-  timeout          = 30
+  timeout                        = 30
+  reserved_concurrent_executions = 3
 
   environment {
     variables = {
