@@ -7,14 +7,15 @@
 
 (defn text-search [q products]
   (let [q (clojure.string/lower-case q)
-        title+tag-matches (filter
-                           #(or (clojure.string/includes? (clojure.string/lower-case (get % :product/title "")) q)
-                                (some (fn [t] (clojure.string/includes? (clojure.string/lower-case t) q))
-                                      (get % :product/tags [])))
-                           products)]
-    (if (seq title+tag-matches)
-      title+tag-matches
-      ;; fall back to description only if title+tag search is empty
+        title+tag+cat-matches (filter
+                               #(or (clojure.string/includes? (clojure.string/lower-case (get % :product/title "")) q)
+                                    (clojure.string/includes? (clojure.string/lower-case (get % :product/category "")) q)
+                                    (some (fn [t] (clojure.string/includes? (clojure.string/lower-case t) q))
+                                          (get % :product/tags [])))
+                               products)]
+    (if (seq title+tag+cat-matches)
+      title+tag+cat-matches
+      ;; fall back to description only if title+tag+cat search is empty
       (filter #(clojure.string/includes? (clojure.string/lower-case (get % :product/description "")) q)
               products))))
 
@@ -193,8 +194,8 @@
                        (keep by-id result-ids))
                      all)
         visible    (cond->> base
-                     (:category filters)  (filter #(= (:product/category %) (:category filters)))
-                     (:max-price filters) (filter #(<= (:product/price %) (:max-price filters))))]
+                     (:categories filters) (filter #(contains? (:categories filters) (:product/category %)))
+                     (:max-price filters)  (filter #(<= (:product/price %) (:max-price filters))))]
     (mapv :product/id visible)))
 
 (defn execute-read-tool [{:keys [name input]}]
@@ -242,9 +243,10 @@
                      (:category input)  (filter #(= (:product/category %) (:category input)))
                      (:max_price input) (filter #(<= (:product/price %) (:max_price input)))
                      (:query input)     (#(text-search (:query input) %)))]
-      (clj->js (mapv #(select-keys % [:product/id :product/title :product/price
-                                      :product/category :product/rating])
-                     filtered)))
+      (js/JSON.stringify
+       (clj->js (mapv #(select-keys % [:product/id :product/title :product/price
+                                       :product/category :product/rating])
+                      filtered))))
     "open_pdp"
     (let [by-title (when-let [t (:product_title input)]
                      (first (filter #(clojure.string/includes?
@@ -270,8 +272,8 @@
                          (keep by-id result-ids))
                        all)
           visible    (cond->> base
-                       (:category filters)  (filter #(= (:product/category %) (:category filters)))
-                       (:max-price filters) (filter #(<= (:product/price %) (:max-price filters))))]
+                       (:categories filters) (filter #(contains? (:categories filters) (:product/category %)))
+                       (:max-price filters)  (filter #(<= (:product/price %) (:max-price filters))))]
       (js/JSON.stringify
        (clj->js (mapv #(select-keys % [:product/id :product/title :product/price
                                        :product/category :product/rating :product/tags])
