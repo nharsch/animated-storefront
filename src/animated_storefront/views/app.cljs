@@ -23,15 +23,21 @@
       [grid/grid-view])))
 
 (defn app []
-  [:div {:class "flex flex-col h-screen"}
-   ;; Top nav
-   [:header {:class "bg-white border-b border-gray-200 px-6 py-3 flex items-center gap-4 flex-shrink-0"}
-    [:h1 {:class "text-lg font-bold tracking-tight"} "Storefront"]
-    [:span {:class "text-xs text-gray-400"} "AI-directed UI demo"]]
-   ;; Tab bar
-   [tab-bar]
-   ;; Body: content + chat
-   [:div {:class "flex flex-1 overflow-hidden"}
-    [main-content]
-    [chat/chat-panel]]
-   [pdp/pdp-modal]])
+  (let [chat-open @(rf/subscribe [:chat-open])]
+    [:div {:class "flex flex-col h-screen"}
+     ;; Top nav
+     [:header {:class "bg-white border-b border-gray-200 px-6 py-3 flex items-center gap-4 flex-shrink-0"}
+      [:h1 {:class "text-lg font-bold tracking-tight"} "Storefront"]
+      [:span {:class "text-xs text-gray-400"} "AI-directed UI demo"]]
+     ;; Tab bar
+     [tab-bar]
+     ;; Body: content + chat
+     [:div {:class "flex flex-1 overflow-hidden"}
+      [main-content]
+      [chat/chat-panel]]
+     ;; Mobile chat toggle button
+     (when-not chat-open
+       [:button {:class "md:hidden fixed bottom-6 right-6 bg-blue-600 text-white rounded-full w-14 h-14 shadow-lg flex items-center justify-center z-40 hover:bg-blue-700"
+                 :on-click #(rf/dispatch [:toggle-chat])}
+        "💬"])
+     [pdp/pdp-modal]]))

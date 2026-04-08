@@ -13,6 +13,7 @@
    :chat           {:messages    []
                     :loading     false
                     :last-search-ids []}  ;; IDs from most recent search_products call
+   :chat-open      false      ;; mobile chat panel visibility
    :categories     []         ;; populated after products load
    :all-products   []         ;; all products, cached from DataScript
    :db-version     0})
@@ -94,6 +95,11 @@
  :chat/set-loading
  (fn [db [_ loading?]]
    (assoc-in db [:chat :loading] loading?)))
+
+(rf/reg-event-db
+ :toggle-chat
+ (fn [db _]
+   (update db :chat-open not)))
 
 ;; -- Product data -------------------------------------------------------------
 

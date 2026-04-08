@@ -28,12 +28,22 @@
           (set! (.-scrollTop el) (.-scrollHeight el))))
       :reagent-render
       (fn []
-        (let [{:keys [messages loading]} @(rf/subscribe [:chat])]
-          [:div {:class "w-80 flex-shrink-0 bg-gray-50 border-l border-gray-200 flex flex-col h-full"}
+        (let [{:keys [messages loading]} @(rf/subscribe [:chat])
+              chat-open @(rf/subscribe [:chat-open])]
+          [:div {:class (str "w-80 flex-shrink-0 bg-gray-50 border-l border-gray-200 flex flex-col h-full "
+                             "fixed md:relative top-0 right-0 md:inset-auto z-50 md:z-auto "
+                             "transition-transform duration-300 "
+                             (if chat-open
+                               "translate-x-0"
+                               "translate-x-full md:translate-x-0"))}
            ;; Header
-           [:div {:class "px-4 py-3 border-b border-gray-200 bg-white"}
-            [:h2 {:class "font-semibold text-gray-900 text-sm"} "Shopping Assistant"]
-            [:p {:class "text-xs text-gray-400"} "Ask me anything or let me help you browse"]]
+           [:div {:class "px-4 py-3 border-b border-gray-200 bg-white flex items-start justify-between"}
+            [:div
+             [:h2 {:class "font-semibold text-gray-900 text-sm"} "Shopping Assistant"]
+             [:p {:class "text-xs text-gray-400"} "Ask me anything or let me help you browse"]]
+            [:button {:class "md:hidden text-gray-400 hover:text-gray-600 -mt-1"
+                      :on-click #(rf/dispatch [:toggle-chat])}
+             "✕"]]
            ;; Messages
            [:div {:class "flex-1 overflow-y-auto p-4"
                   :ref   (fn [el] (reset! scroll-ref el))}

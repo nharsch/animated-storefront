@@ -5,6 +5,7 @@
 (rf/reg-sub :filters (fn [db _] (:filters db)))
 (rf/reg-sub :sort (fn [db _] (:sort db)))
 (rf/reg-sub :chat (fn [db _] (:chat db)))
+(rf/reg-sub :chat-open (fn [db _] (:chat-open db)))
 (rf/reg-sub :products-loading (fn [db _] (:products-loading db)))
 (rf/reg-sub :db-version (fn [db _] (:db-version db)))
 (rf/reg-sub :result-ids (fn [db _] (:result-ids db)))
