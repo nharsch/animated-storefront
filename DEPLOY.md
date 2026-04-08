@@ -1,5 +1,29 @@
 # Deploy Playbook
 
+## Network Diagram
+
+```
+Browser (GitHub Pages — your-username.github.io/animated-storefront/)
+  │
+  │  HTTPS POST /
+  ▼
+AWS API Gateway HTTP API
+(<id>.execute-api.<region>.amazonaws.com)
+  │
+  │  Lambda proxy integration
+  ▼
+AWS Lambda: animated-storefront-chat (nodejs18.x)
+  │                        │
+  │  GetSecretValue         │  HTTPS POST /v1/messages
+  ▼                        ▼
+AWS Secrets Manager    api.anthropic.com
+(anthropic-api-key)
+```
+
+**Static assets:** GitHub Pages serves `public/` from the `gh-pages` branch.  
+**CI/CD:** GitHub Actions builds and deploys frontend on every push to `master`.  
+**API URL:** baked into the JS bundle at build time via `CHAT_API_URL` env var / GitHub Actions secret.
+
 ## Prerequisites
 
 - AWS CLI configured (`aws configure`)
@@ -33,7 +57,7 @@ AWS_PROFILE=nharsch terraform apply
 This creates:
 - AWS Secrets Manager secret (`animated-storefront/anthropic-api-key`) — value must be set manually (see below)
 - Lambda function (`animated-storefront-chat`)
-- Lambda Function URL (with CORS)
+- API Gateway HTTP API with CORS
 - IAM role scoped to read the secret and write logs
 
 **Set the secret value** (first deploy only):
@@ -51,7 +75,7 @@ cd ..
 CHAT_API_URL=$(cd terraform && terraform output -raw chat_url) npx shadow-cljs release app
 ```
 
-The Lambda Function URL is baked into the compiled JS at build time.
+The API Gateway URL is baked into the compiled JS at build time.
 
 ### 3. Push to GitHub Pages
 
@@ -59,7 +83,7 @@ The Lambda Function URL is baked into the compiled JS at build time.
 ./scripts/deploy-gh-pages.sh
 ```
 
-Site will be live at: https://nharsch.github.io/animated-storefront/
+Site will be live at: https://your-username.github.io/animated-storefront/
 
 ## Updating the Lambda
 
