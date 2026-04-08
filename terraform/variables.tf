@@ -4,8 +4,3 @@ variable "aws_region" {
   default     = "us-east-1"
 }
 
-variable "anthropic_api_key" {
-  description = "Anthropic API key injected as Lambda environment variable"
-  type        = string
-  sensitive   = true
-}

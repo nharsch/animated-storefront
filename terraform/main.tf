@@ -32,7 +32,7 @@ resource "aws_iam_role" "lambda_role" {
 
 resource "aws_iam_role_policy_attachment" "lambda_basic" {
   role       = aws_iam_role.lambda_role.name
-  policy_arn = "arn:aws:iam::aws:policies/service-role/AWSLambdaBasicExecutionRole"
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
 
 # --- Secrets Manager ---
@@ -43,7 +43,11 @@ resource "aws_secretsmanager_secret" "anthropic_api_key" {
 
 resource "aws_secretsmanager_secret_version" "anthropic_api_key" {
   secret_id     = aws_secretsmanager_secret.anthropic_api_key.id
-  secret_string = var.anthropic_api_key
+  secret_string = "placeholder"
+
+  lifecycle {
+    ignore_changes = [secret_string]
+  }
 }
 
 resource "aws_iam_role_policy" "lambda_secrets" {
@@ -75,8 +79,7 @@ resource "aws_lambda_function" "chat_proxy" {
   role             = aws_iam_role.lambda_role.arn
   handler          = "index.handler"
   runtime          = "nodejs20.x"
-  timeout                        = 30
-  reserved_concurrent_executions = 3
+  timeout = 30
 
   environment {
     variables = {
@@ -93,7 +96,7 @@ resource "aws_lambda_function_url" "chat_url" {
 
   cors {
     allow_origins = ["*"]
-    allow_methods = ["POST", "OPTIONS"]
+    allow_methods = ["POST"]
     allow_headers = ["content-type"]
     max_age       = 300
   }

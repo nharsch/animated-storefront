@@ -27,14 +27,22 @@ Enable GitHub Pages in the repo settings, pointing at the `gh-pages` branch.
 ```bash
 cd terraform
 terraform init
-terraform apply -var="anthropic_api_key=sk-..."
+AWS_PROFILE=nharsch terraform apply
 ```
 
 This creates:
-- AWS Secrets Manager secret (`animated-storefront/anthropic-api-key`)
+- AWS Secrets Manager secret (`animated-storefront/anthropic-api-key`) — value must be set manually (see below)
 - Lambda function (`animated-storefront-chat`)
 - Lambda Function URL (with CORS)
 - IAM role scoped to read the secret and write logs
+
+**Set the secret value** (first deploy only):
+```bash
+aws secretsmanager put-secret-value \
+  --secret-id animated-storefront/anthropic-api-key \
+  --secret-string "sk-..." \
+  --profile nharsch
+```
 
 ### 2. Build frontend
 
@@ -60,8 +68,10 @@ Re-running `terraform apply` zips and redeploys `lambda/chat/` automatically if 
 ## Rotating the API key
 
 ```bash
-cd terraform
-terraform apply -var="anthropic_api_key=sk-new-key..."
+aws secretsmanager put-secret-value \
+  --secret-id animated-storefront/anthropic-api-key \
+  --secret-string "sk-new-key..." \
+  --profile nharsch
 ```
 
-This updates the Secrets Manager secret version. The Lambda picks it up on next cold start (cached per warm container).
+The Lambda picks it up on next cold start (cached per warm container). Terraform is not involved.
