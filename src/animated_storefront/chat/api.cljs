@@ -134,10 +134,10 @@
                          :tools    tools/tool-definitions}
                   config/dev-mode (assoc :model "claude-haiku-4-5-20251001"
                                          :max_tokens 1024))
-        headers (cond-> {"Content-Type"      "application/json"
-                         "anthropic-version" "2023-06-01"
-                         "anthropic-dangerous-direct-browser-access" "true"}
-                  config/dev-mode (assoc "x-api-key" config/api-key))]
+        headers (cond-> {"Content-Type" "application/json"}
+                  config/dev-mode (assoc "anthropic-version" "2023-06-01"
+                                         "anthropic-dangerous-direct-browser-access" "true"
+                                         "x-api-key" config/api-key))]
     (-> (js/fetch (config/chat-url)
                   (clj->js {:method "POST" :headers headers
                             :body   (js/JSON.stringify (clj->js body))}))

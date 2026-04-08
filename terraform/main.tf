@@ -95,9 +95,9 @@ resource "aws_lambda_function_url" "chat_url" {
   authorization_type = "NONE"
 
   cors {
-    allow_origins = ["*"]
-    allow_methods = ["POST"]
-    allow_headers = ["content-type"]
-    max_age       = 300
+    allow_origins  = ["*"]
+    allow_methods  = ["POST"]
+    allow_headers  = ["content-type", "anthropic-version", "x-api-key"]
+    max_age        = 300
   }
 }
