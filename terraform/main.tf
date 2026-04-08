@@ -88,24 +88,44 @@ resource "aws_lambda_function" "chat_proxy" {
   }
 }
 
-# --- Function URL (no API Gateway needed) ---
+# --- API Gateway HTTP API ---
 
-resource "aws_lambda_permission" "allow_public_url" {
-  statement_id           = "AllowPublicAccess"
-  action                 = "lambda:InvokeFunctionUrl"
-  function_name          = aws_lambda_function.chat_proxy.function_name
-  principal              = "*"
-  function_url_auth_type = "NONE"
-}
+resource "aws_apigatewayv2_api" "chat_api" {
+  name          = "animated-storefront-chat"
+  protocol_type = "HTTP"
 
-resource "aws_lambda_function_url" "chat_url" {
-  function_name      = aws_lambda_function.chat_proxy.function_name
-  authorization_type = "NONE"
-
-  cors {
-    allow_origins  = ["*"]
-    allow_methods  = ["POST"]
-    allow_headers  = ["content-type", "anthropic-version", "x-api-key"]
-    max_age        = 300
+  cors_configuration {
+    allow_origins = ["*"]
+    allow_methods = ["POST", "OPTIONS"]
+    allow_headers = ["content-type"]
+    max_age       = 300
   }
 }
+
+resource "aws_apigatewayv2_integration" "lambda" {
+  api_id                 = aws_apigatewayv2_api.chat_api.id
+  integration_type       = "AWS_PROXY"
+  integration_uri        = aws_lambda_function.chat_proxy.invoke_arn
+  payload_format_version = "2.0"
+}
+
+resource "aws_apigatewayv2_route" "post_chat" {
+  api_id    = aws_apigatewayv2_api.chat_api.id
+  route_key = "POST /"
+  target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+}
+
+resource "aws_apigatewayv2_stage" "default" {
+  api_id      = aws_apigatewayv2_api.chat_api.id
+  name        = "$default"
+  auto_deploy = true
+}
+
+resource "aws_lambda_permission" "allow_apigw" {
+  statement_id  = "AllowAPIGatewayInvoke"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.chat_proxy.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_apigatewayv2_api.chat_api.execution_arn}/*/*"
+}
+
