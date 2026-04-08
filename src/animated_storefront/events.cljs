@@ -4,25 +4,26 @@
 
 ;; -- Initial state ------------------------------------------------------------
 
-(def default-db
-  {:view           :grid      ;; :grid | :list
-   :filters        {}
-   :sort           {:field :price :dir :asc}
-   :result-ids     nil        ;; when set, grid/list show only these products
-   :pdp-product-id nil        ;; when set, PDP modal is open
-   :chat           {:messages    []
-                    :loading     false
-                    :last-search-ids []}  ;; IDs from most recent search_products call
-   :chat-open      false      ;; mobile chat panel visibility
-   :categories     []         ;; populated after products load
-   :all-products   []         ;; all products, cached from DataScript
-   :db-version     0})
+(defn default-db []
+  (let [mobile? (< (.-innerWidth js/window) 768)]
+    {:view           (if mobile? :list :grid)  ;; :grid | :list, mobile defaults to list
+     :filters        {}
+     :sort           {:field :price :dir :asc}
+     :result-ids     nil        ;; when set, grid/list show only these products
+     :pdp-product-id nil        ;; when set, PDP modal is open
+     :chat           {:messages    []
+                      :loading     false
+                      :last-search-ids []}  ;; IDs from most recent search_products call
+     :chat-open      false      ;; mobile chat panel visibility
+     :categories     []         ;; populated after products load
+     :all-products   []         ;; all products, cached from DataScript
+     :db-version     0}))
 
 ;; -- App lifecycle ------------------------------------------------------------
 
 (rf/reg-event-db
  :initialize
- (fn [_ _] default-db))
+ (fn [_ _] (default-db)))
 
 ;; -- View ---------------------------------------------------------------------
 

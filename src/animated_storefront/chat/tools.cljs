@@ -132,22 +132,25 @@
                                    (clojure.string/includes?
                                     (clojure.string/lower-case (:product/title p))
                                     title)))
-                               current))]
-      (rf/dispatch-sync [:change-view :grid (when (seq pruned) pruned)]))
+                               current))
+          view    (:view @rf-db/app-db)]
+      (rf/dispatch-sync [:change-view view (when (seq pruned) pruned)]))
 
     "show_results"
     (let [current    (or (:result-ids @rf-db/app-db) [])
           last-ids   (or (:last-search-ids (:chat @rf-db/app-db)) [])
-          joined     (vec (distinct (concat current last-ids)))]
-      (rf/dispatch-sync [:change-view :grid joined]))
+          joined     (vec (distinct (concat current last-ids)))
+          view       (:view @rf-db/app-db)]
+      (rf/dispatch-sync [:change-view view joined]))
 
     "search_and_show"
     (let [q        (clojure.string/lower-case (:query input))
           matches  (text-search q (product-db/all-products))
           new-ids  (mapv :product/id matches)
           current  (or (:result-ids @rf-db/app-db) [])
-          joined   (vec (distinct (concat current new-ids)))]
-      (rf/dispatch-sync [:change-view :grid joined]))
+          joined   (vec (distinct (concat current new-ids)))
+          view     (:view @rf-db/app-db)]
+      (rf/dispatch-sync [:change-view view joined]))
 
     "search_products"
     nil ;; read-only

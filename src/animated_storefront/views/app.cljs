@@ -20,6 +20,7 @@
   (let [view @(rf/subscribe [:view])]
     (case view
       :grid [grid/grid-view]
+      :list [grid/list-view]
       [grid/grid-view])))
 
 (defn app []
