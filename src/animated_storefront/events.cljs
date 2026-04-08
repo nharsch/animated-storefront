@@ -13,6 +13,7 @@
    :chat           {:messages    []
                     :loading     false
                     :last-search-ids []}  ;; IDs from most recent search_products call
+   :categories     []         ;; populated after products load
    :db-version     0})
 
 ;; -- App lifecycle ------------------------------------------------------------
@@ -107,4 +108,5 @@
    (product-db/load-products! products)
    (-> db
        (assoc :products-loading false)
+       (assoc :categories (product-db/categories))
        (update :db-version inc))))

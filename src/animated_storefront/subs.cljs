@@ -44,7 +44,6 @@
 
 (rf/reg-sub
  :categories
- :<- [:db-version]
- (fn [_ _]
-   (product-db/categories)))
+ (fn [db _]
+   (:categories db)))
 
