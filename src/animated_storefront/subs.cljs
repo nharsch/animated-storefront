@@ -33,8 +33,8 @@
                       (keep by-id result-ids))
                     all-products)
          filtered (cond->> base
-                    (:category filters)  (filter #(= (:product/category %) (:category filters)))
-                    (:max-price filters) (filter #(<= (:product/price %) (:max-price filters))))
+                    (:categories filters) (filter #(contains? (:categories filters) (:product/category %)))
+                    (:max-price filters)  (filter #(<= (:product/price %) (:max-price filters))))
          sort-fn  (fn [p] (get p (keyword "product" (name field))))
          sorted   (sort-by sort-fn filtered)]
      (if (= dir :desc) (reverse sorted) sorted))))
