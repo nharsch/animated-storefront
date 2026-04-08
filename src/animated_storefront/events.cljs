@@ -107,9 +107,11 @@
  :products-loaded
  (fn [db [_ products]]
    (product-db/load-products! products)
-   (let [all-prods (product-db/all-products)]
+   (let [all-prods (product-db/all-products)
+         ;; Extract categories directly from products to avoid DataScript query issues in release builds
+         categories (into #{} (map :category products))]
      (-> db
          (assoc :products-loading false)
-         (assoc :categories (product-db/categories))
+         (assoc :categories categories)
          (assoc :all-products all-prods)
          (update :db-version inc)))))
