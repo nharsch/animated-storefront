@@ -5,11 +5,10 @@
   (let [product @(rf/subscribe [:pdp-product])]
     (when product
       (let [{:product/keys [title description price category rating stock thumbnail tags brand]} product]
-        [:div {:class    "fixed inset-0 z-50 flex items-center justify-center p-4"
-               :on-click #(when (= (.-target %) (.-currentTarget %))
-                            (rf/dispatch [:close-pdp]))}
-         ;; Backdrop
-         [:div {:class "absolute inset-0 bg-black/40"}]
+        [:div {:class "fixed inset-0 z-50 flex items-center justify-center p-4"}
+         ;; Backdrop - clicking it closes the modal
+         [:div {:class    "absolute inset-0 bg-black/40"
+                :on-click #(rf/dispatch [:close-pdp])}]
          ;; Panel
          [:div {:class "relative bg-white rounded-2xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto z-10"}
           ;; Close button
