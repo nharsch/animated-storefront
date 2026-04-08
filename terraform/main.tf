@@ -78,7 +78,7 @@ resource "aws_lambda_function" "chat_proxy" {
   function_name    = "animated-storefront-chat"
   role             = aws_iam_role.lambda_role.arn
   handler          = "index.handler"
-  runtime          = "nodejs20.x"
+  runtime          = "nodejs18.x"
   timeout = 30
 
   environment {
